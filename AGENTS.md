@@ -260,3 +260,25 @@ pnpm lint
 코드 구조를 과도하게 추상화하지 않는다.
 
 "일단 동작하는 간단한 구현 → 필요할 때 확장"을 기본 원칙으로 한다.
+
+## 15. Naver Commerce API
+
+네이버 커머스 API의 인증 토큰을 발급할 때는 다음 표준 스펙을 반드시 준수한다.
+
+* Request 헤더 `Content-Type`: `application/x-www-form-urlencoded`
+* Request Body: `x-www-form-urlencoded` 형식
+* `grant_type`: 항상 `client_credentials`
+
+위 규칙을 지키지 않으면 API 호출량이 제한될 수 있으며, 신규 앱은 오류를 반환할 수 있다.
+
+API 자격 증명은 코드나 Git에 포함하지 않는다. 로컬 환경 변수로만 관리하며, 서버 측에서만 네이버 API를 호출한다.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
