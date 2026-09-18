@@ -49,6 +49,29 @@ export type ProductSearchResponse = {
   last: boolean;
 };
 
+export type OriginProductImage = { url?: string };
+
+export type OriginProduct = {
+  originProductNo: number;
+  name: string;
+  salePrice: number;
+  stockQuantity: number;
+  images?: {
+    representativeImage?: OriginProductImage;
+    optionalImages?: OriginProductImage[];
+  };
+  detailContent?: string;
+  detailAttribute?: {
+    optionInfo?: unknown;
+    [key: string]: unknown;
+  };
+};
+
+type OriginProductResponse = {
+  originProduct: OriginProduct;
+  smartstoreChannelProduct?: unknown;
+};
+
 type NaverTokenResponse = { access_token?: string; error?: string; error_description?: string; message?: string };
 type NaverApiError = { code?: string; message?: string };
 
@@ -100,9 +123,16 @@ export async function getNaverProducts(): Promise<ProductSearchResponse> {
   return payload as ProductSearchResponse;
 }
 
-export async function getProductDetail(productId: string) {
-  const response = await getNaverProducts();
-  return response.contents.flatMap((content) => content.channelProducts).find(
-    (product) => String(product.channelProductNo) === productId || String(product.originProductNo) === productId,
-  );
+export async function getOriginProduct(originProductNo: string): Promise<OriginProduct> {
+  const accessToken = await getAccessToken();
+  const response = await fetch(`${NAVER_COMMERCE_BASE_URL}/v2/products/origin-products/${encodeURIComponent(originProductNo)}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  const payload = (await response.json()) as unknown;
+  if (!response.ok) {
+    const error = payload as NaverApiError;
+    throw new NaverCommerceError(error.message ?? error.code ?? "네이버 상품 상세 조회에 실패했습니다.", response.status);
+  }
+  return (payload as OriginProductResponse).originProduct;
 }

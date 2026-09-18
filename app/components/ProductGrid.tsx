@@ -32,12 +32,12 @@ export default function ProductGrid({ products }: { products: ChannelProduct[] }
     </div>
     <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 md:gap-x-6 lg:grid-cols-4">
       {sorted.map((product) => {
-        const id = String(product.channelProductNo || product.originProductNo);
+        const id = String(product.originProductNo);
         const sale = discountedPrice(product);
         const discount = sale < product.salePrice ? Math.round(((product.salePrice - sale) / product.salePrice) * 100) : 0;
         const soldOut = product.stockQuantity <= 0 || product.statusType !== "SALE";
         return <article key={id} className="group relative min-w-0">
-          <Link href={`/products/${id}`} className="block">
+          <Link href={`/shop/${id}`} className="block">
             <div className="relative aspect-[4/5] overflow-hidden bg-stone-100">
               <ProductImage src={product.representativeImage?.url} alt={product.name} className="size-full object-cover transition duration-500 group-hover:scale-[1.03]" />
               {soldOut && <div className="absolute inset-0 grid place-items-center bg-black/35 text-xs tracking-[0.16em] text-white">SOLD OUT</div>}
