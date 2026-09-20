@@ -8,7 +8,6 @@ export type CartItem = {
   price: number;
   quantity: number;
   imageUrl: string;
-  stockQuantity: number;
 };
 
 type CartContextValue = {
@@ -39,11 +38,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const existing = current.find((saved) => saved.productId === item.productId);
       if (!existing) return [...current, item];
       return current.map((saved) => saved.productId === item.productId
-        ? { ...saved, quantity: Math.min(saved.quantity + item.quantity, saved.stockQuantity) }
+        ? { ...saved, quantity: saved.quantity + item.quantity }
         : saved);
     }),
     updateQuantity: (productId, quantity) => setItems((current) => current.map((item) =>
-      item.productId === productId ? { ...item, quantity: Math.max(1, Math.min(quantity, item.stockQuantity)) } : item)),
+      item.productId === productId ? { ...item, quantity: Math.max(1, quantity) } : item)),
     removeItem: (productId) => setItems((current) => current.filter((item) => item.productId !== productId)),
   }), [items]);
 

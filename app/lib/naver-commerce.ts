@@ -3,73 +3,36 @@ import bcrypt from "bcrypt";
 
 const NAVER_COMMERCE_BASE_URL = "https://api.commerce.naver.com/external";
 
-export type SellerTag = { code?: string; text?: string };
-
 export type ChannelProduct = {
   originProductNo: number;
-  channelProductNo: number;
-  channelServiceType: string;
-  categoryId: string;
   name: string;
   statusType: string;
-  channelProductDisplayStatusType: string;
   salePrice: number;
   discountedPrice?: number;
-  mobileDiscountedPrice?: number;
-  stockQuantity: number;
-  deliveryAttributeType?: string;
   deliveryFee?: number;
-  returnFee?: number;
-  exchangeFee?: number;
-  sellerPurchasePoint?: number;
-  sellerPurchasePointUnitType?: string;
-  managerPurchasePoint?: number;
-  textReviewPoint?: number;
-  photoVideoReviewPoint?: number;
-  regularCustomerPoint?: number;
   representativeImage?: { url?: string };
-  brandName?: string;
-  manufacturerName?: string;
-  wholeCategoryName?: string;
-  wholeCategoryId?: string;
-  sellerTags?: SellerTag[];
-  regDate?: string;
-  modifiedDate?: string;
 };
 
-export type ProductContent = { originProductNo: number; channelProducts: ChannelProduct[] };
-
 export type ProductSearchResponse = {
-  contents: ProductContent[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
-  first: boolean;
-  last: boolean;
+  contents: { channelProducts: ChannelProduct[] }[];
 };
 
 export type OriginProductImage = { url?: string };
 
 export type OriginProduct = {
+  statusType: string;
   originProductNo: number;
   name: string;
   salePrice: number;
-  stockQuantity: number;
   images?: {
     representativeImage?: OriginProductImage;
     optionalImages?: OriginProductImage[];
   };
   detailContent?: string;
-  detailAttribute?: {
-    optionInfo?: unknown;
-    [key: string]: unknown;
-  };
 };
 
 type OriginProductResponse = {
   originProduct: OriginProduct;
-  smartstoreChannelProduct?: unknown;
 };
 
 type NaverTokenResponse = { access_token?: string; error?: string; error_description?: string; message?: string };

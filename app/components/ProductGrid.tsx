@@ -35,7 +35,7 @@ export default function ProductGrid({ products }: { products: ChannelProduct[] }
         const id = String(product.originProductNo);
         const sale = discountedPrice(product);
         const discount = sale < product.salePrice ? Math.round(((product.salePrice - sale) / product.salePrice) * 100) : 0;
-        const soldOut = product.stockQuantity <= 0 || product.statusType !== "SALE";
+        const soldOut = product.statusType !== "SALE";
         return <article key={id} className="group relative min-w-0">
           <Link href={`/shop/${id}`} className="block">
             <div className="relative aspect-[4/5] overflow-hidden bg-stone-100">
@@ -44,7 +44,6 @@ export default function ProductGrid({ products }: { products: ChannelProduct[] }
             </div>
             <div className="pt-4">
               <p className="line-clamp-2 min-h-10 text-sm leading-5 text-stone-900">{product.name}</p>
-              {product.sellerTags?.length ? <p className="mt-2 text-[11px] tracking-wide text-stone-500">{product.sellerTags.map((tag) => `#${tag.text}`).join(" ")}</p> : null}
               <div className="mt-3 flex items-baseline gap-2"><span className="text-sm font-medium">{formatPrice(sale)}</span>{discount > 0 && <><span className="text-xs text-stone-400 line-through">{formatPrice(product.salePrice)}</span><span className="text-sm text-rose-700">{discount}%</span></>}</div>
               <p className="mt-2 text-xs text-stone-500">{product.deliveryFee === 0 ? "무료배송" : product.deliveryFee ? `배송비 ${formatPrice(product.deliveryFee)}` : "배송 정보 확인"}</p>
             </div>
