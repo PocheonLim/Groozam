@@ -14,7 +14,6 @@ function discountedPrice(product: ChannelProduct) {
 
 export default function ProductGrid({ products }: { products: ChannelProduct[] }) {
   const [sort, setSort] = useState("latest");
-  const [favorites, setFavorites] = useState<string[]>([]);
   const sorted = useMemo(() => [...products].sort((a, b) => {
     if (sort === "low") return discountedPrice(a) - discountedPrice(b);
     if (sort === "high") return discountedPrice(b) - discountedPrice(a);
@@ -36,7 +35,7 @@ export default function ProductGrid({ products }: { products: ChannelProduct[] }
         const sale = discountedPrice(product);
         const discount = sale < product.salePrice ? Math.round(((product.salePrice - sale) / product.salePrice) * 100) : 0;
         const soldOut = product.statusType !== "SALE";
-        return <article key={id} className="group relative min-w-0">
+        return <article key={id} className="group min-w-0">
           <Link href={`/shop/${id}`} className="block">
             <div className="relative aspect-[4/5] overflow-hidden bg-stone-100">
               <ProductImage src={product.representativeImage?.url} alt={product.name} className="size-full object-cover transition duration-500 group-hover:scale-[1.03]" />
@@ -48,9 +47,6 @@ export default function ProductGrid({ products }: { products: ChannelProduct[] }
               <p className="mt-2 text-xs text-stone-500">{product.deliveryFee === 0 ? "무료배송" : product.deliveryFee ? `배송비 ${formatPrice(product.deliveryFee)}` : "배송 정보 확인"}</p>
             </div>
           </Link>
-          <button type="button" aria-label={`${product.name} 관심상품`} onClick={() => setFavorites((saved) => saved.includes(id) ? saved.filter((savedId) => savedId !== id) : [...saved, id])} className="absolute right-2 top-2 grid size-8 place-items-center bg-white/80 text-stone-700">
-            <span aria-hidden="true">{favorites.includes(id) ? "♥" : "♡"}</span>
-          </button>
         </article>;
       })}
     </div>

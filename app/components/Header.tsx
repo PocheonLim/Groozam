@@ -8,8 +8,6 @@ import logo from "../../public/rogo.png";
 
 const navItems = [
   { href: "/shop", label: "SHOP" },
-  { href: "/about", label: "ABOUT" },
-  { href: "/journal", label: "JOURNAL" },
 ] as const;
 
 export default function Header() {
