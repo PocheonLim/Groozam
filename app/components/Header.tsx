@@ -5,10 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import logo from "../../public/rogo.png";
+import { categories } from "@/app/lib/categories";
 
-const navItems = [
-  { href: "/shop", label: "SHOP" },
-] as const;
+const navItems = categories.map((category) => ({ href: `/category/${category.slug}`, label: category.label }));
 
 export default function Header() {
   const pathname = usePathname();
@@ -20,17 +19,17 @@ function HeaderBar({ pathname }: { pathname: string }) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white">
-      <div className="mx-auto grid h-[72px] max-w-[1440px] grid-cols-[1fr_auto_1fr] items-center px-10 max-md:flex max-md:h-16 max-md:justify-between max-md:px-5">
+      <div className="mx-auto grid h-[72px] max-w-[1440px] grid-cols-[1fr_auto_1fr] items-center px-10 max-lg:flex max-lg:h-16 max-lg:justify-between max-lg:px-5">
         <Link href="/" aria-label="GROOZAM 홈" className="justify-self-start">
           <Image
             src={logo}
             alt="GROOZAM"
             priority
-            className="h-6 w-auto max-md:h-5"
+            className="h-6 w-auto max-lg:h-5"
           />
         </Link>
 
-        <nav className="flex items-center gap-9 max-md:hidden" aria-label="주요 메뉴">
+        <nav className="flex items-center gap-9 max-lg:hidden" aria-label="주요 메뉴">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -60,7 +59,7 @@ function HeaderBar({ pathname }: { pathname: string }) {
           </IconLink>
           <button
             type="button"
-            className="hidden size-10 items-center justify-center text-neutral-900 max-md:inline-flex"
+            className="hidden size-10 items-center justify-center text-neutral-900 max-lg:inline-flex"
             aria-expanded={menuOpen}
             aria-controls="mobile-nav"
             aria-label={menuOpen ? "메뉴 닫기" : "메뉴 열기"}
@@ -74,7 +73,7 @@ function HeaderBar({ pathname }: { pathname: string }) {
       {menuOpen ? (
         <nav
           id="mobile-nav"
-          className="flex flex-col gap-5 border-t border-neutral-200 bg-white px-5 py-6 md:hidden"
+          className="flex flex-col gap-5 border-t border-neutral-200 bg-white px-5 py-6 lg:hidden"
           aria-label="모바일 메뉴"
         >
           {navItems.map((item) => (

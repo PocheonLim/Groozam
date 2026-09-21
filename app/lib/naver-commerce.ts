@@ -1,5 +1,6 @@
 import "server-only";
 import bcrypt from "bcrypt";
+import { cache } from "react";
 
 const NAVER_COMMERCE_BASE_URL = "https://api.commerce.naver.com/external";
 
@@ -24,6 +25,7 @@ export type OriginProduct = {
   originProductNo: number;
   name: string;
   salePrice: number;
+  discountedPrice?: number;
   images?: {
     representativeImage?: OriginProductImage;
     optionalImages?: OriginProductImage[];
@@ -72,10 +74,14 @@ async function getAccessToken() {
 
 export async function getNaverProducts(): Promise<ProductSearchResponse> {
   const accessToken = await getAccessToken();
+  return searchProducts(accessToken);
+}
+
+async function searchProducts(accessToken: string, originProductNo?: string): Promise<ProductSearchResponse> {
   const response = await fetch(`${NAVER_COMMERCE_BASE_URL}/v1/products/search`, {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ page: 1, size: 100 }),
+    body: JSON.stringify({ page: 1, size: 100, ...(originProductNo ? { searchKeywordType: "ORIGIN_PRODUCT_NO", originProductNos: [Number(originProductNo)] } : {}) }),
     cache: "no-store",
   });
   const payload = (await response.json()) as unknown;
@@ -86,7 +92,7 @@ export async function getNaverProducts(): Promise<ProductSearchResponse> {
   return payload as ProductSearchResponse;
 }
 
-export async function getOriginProduct(originProductNo: string): Promise<OriginProduct> {
+export const getOriginProduct = cache(async (originProductNo: string): Promise<OriginProduct> => {
   const accessToken = await getAccessToken();
   const response = await fetch(`${NAVER_COMMERCE_BASE_URL}/v2/products/origin-products/${encodeURIComponent(originProductNo)}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -97,5 +103,9 @@ export async function getOriginProduct(originProductNo: string): Promise<OriginP
     const error = payload as NaverApiError;
     throw new NaverCommerceError(error.message ?? error.code ?? "네이버 상품 상세 조회에 실패했습니다.", response.status);
   }
-  return (payload as OriginProductResponse).originProduct;
-}
+  const product = (payload as OriginProductResponse).originProduct;
+  const search = await searchProducts(accessToken, originProductNo);
+  const channelProduct = search.contents.flatMap((content) => content.channelProducts)
+    .find((channel) => String(channel.originProductNo) === originProductNo);
+  return { ...product, originProductNo: Number(originProductNo), salePrice: channelProduct?.salePrice ?? product.salePrice, discountedPrice: channelProduct?.discountedPrice };
+});

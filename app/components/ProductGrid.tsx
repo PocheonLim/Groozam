@@ -4,19 +4,16 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ChannelProduct } from "@/app/lib/naver-commerce";
 import ProductImage from "./ProductImage";
+import { getProductPrice } from "@/app/lib/product-price";
 
 const money = new Intl.NumberFormat("ko-KR");
 const formatPrice = (price: number) => `${money.format(price)}원`;
 
-function discountedPrice(product: ChannelProduct) {
-  return product.discountedPrice && product.discountedPrice < product.salePrice ? product.discountedPrice : product.salePrice;
-}
-
 export default function ProductGrid({ products }: { products: ChannelProduct[] }) {
   const [sort, setSort] = useState("latest");
   const sorted = useMemo(() => [...products].sort((a, b) => {
-    if (sort === "low") return discountedPrice(a) - discountedPrice(b);
-    if (sort === "high") return discountedPrice(b) - discountedPrice(a);
+    if (sort === "low") return getProductPrice(a) - getProductPrice(b);
+    if (sort === "high") return getProductPrice(b) - getProductPrice(a);
     return 0;
   }), [products, sort]);
 
@@ -32,7 +29,7 @@ export default function ProductGrid({ products }: { products: ChannelProduct[] }
     <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 md:gap-x-6 lg:grid-cols-4">
       {sorted.map((product) => {
         const id = String(product.originProductNo);
-        const sale = discountedPrice(product);
+        const sale = getProductPrice(product);
         const discount = sale < product.salePrice ? Math.round(((product.salePrice - sale) / product.salePrice) * 100) : 0;
         const soldOut = product.statusType !== "SALE";
         return <article key={id} className="group min-w-0">

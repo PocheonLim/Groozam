@@ -38,7 +38,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const existing = current.find((saved) => saved.productId === item.productId);
       if (!existing) return [...current, item];
       return current.map((saved) => saved.productId === item.productId
-        ? { ...saved, quantity: saved.quantity + item.quantity }
+        ? { ...saved, price: item.price, quantity: saved.quantity + item.quantity }
         : saved);
     }),
     updateQuantity: (productId, quantity) => setItems((current) => current.map((item) =>
