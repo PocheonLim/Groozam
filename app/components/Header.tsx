@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import logo from "../../public/rogo.png";
 import { categories } from "@/app/lib/categories";
 
@@ -16,6 +16,20 @@ export default function Header() {
 
 function HeaderBar({ pathname }: { pathname: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchInput = useRef<HTMLInputElement>(null);
+  const searchButton = useRef<HTMLButtonElement>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (searchOpen) searchInput.current?.focus();
+  }, [searchOpen]);
+
+  function closeSearch() {
+    setSearchOpen(false);
+    searchButton.current?.focus();
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white">
@@ -45,8 +59,12 @@ function HeaderBar({ pathname }: { pathname: string }) {
 
         <div className="flex items-center justify-end gap-5 justify-self-end">
           <button
+            ref={searchButton}
             type="button"
             aria-label="검색"
+            aria-expanded={searchOpen}
+            aria-controls="header-search"
+            onClick={() => { setSearchOpen((open) => !open); setMenuOpen(false); }}
             className={iconControlClass}
           >
             <SearchIcon />
@@ -63,12 +81,40 @@ function HeaderBar({ pathname }: { pathname: string }) {
             aria-expanded={menuOpen}
             aria-controls="mobile-nav"
             aria-label={menuOpen ? "메뉴 닫기" : "메뉴 열기"}
-            onClick={() => setMenuOpen((open) => !open)}
+            onClick={() => { setMenuOpen((open) => !open); setSearchOpen(false); }}
           >
             <MenuIcon open={menuOpen} />
           </button>
         </div>
       </div>
+
+      {searchOpen && <section
+        id="header-search"
+        aria-label="상품 검색"
+        className="absolute inset-x-0 top-full border-y border-stone-200 bg-white px-5 py-7 shadow-sm md:px-10 md:py-10"
+        onKeyDown={(event) => { if (event.key === "Escape") closeSearch(); }}
+      >
+        <div className="mx-auto max-w-2xl">
+          <form role="search" action="/search" onSubmit={(event) => {
+            event.preventDefault();
+            const keyword = query.trim();
+            if (!keyword) { searchInput.current?.focus(); return; }
+            setSearchOpen(false);
+            router.push(`/search?q=${encodeURIComponent(keyword)}`);
+          }}>
+            <div className="flex items-center gap-3 border-b border-stone-900 pb-3">
+              <label htmlFor="header-query" className="sr-only">검색어</label>
+              <input ref={searchInput} id="header-query" name="q" type="search" value={query} onChange={(event) => setQuery(event.target.value)} maxLength={100} placeholder="어떤 가구를 찾으시나요?" className="min-w-0 flex-1 bg-transparent py-2 text-base outline-none" />
+              <button type="submit" aria-label="검색 실행" className="inline-flex size-10 shrink-0 items-center justify-center"><SearchIcon /></button>
+              <button type="button" onClick={closeSearch} className="shrink-0 py-2 text-sm text-stone-500">닫기</button>
+            </div>
+          </form>
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <p className="text-xs text-stone-500">추천 검색어</p>
+            {categories.map((category) => <button key={category.slug} type="button" onClick={() => { setQuery(category.label); searchInput.current?.focus(); }} className="py-2 text-sm text-stone-700 hover:text-stone-950 hover:underline underline-offset-4">{category.label}</button>)}
+          </div>
+        </div>
+      </section>}
 
       {menuOpen ? (
         <nav

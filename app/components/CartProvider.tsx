@@ -1,17 +1,12 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-
-export type CartItem = {
-  productId: string;
-  productName: string;
-  price: number;
-  quantity: number;
-  imageUrl: string;
-};
+import { MAX_CART_QUANTITY, readCart, type CartItem } from "@/app/lib/cart";
 
 type CartContextValue = {
   items: CartItem[];
+  ready: boolean;
+  storageError: boolean;
   addItem: (item: CartItem) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   removeItem: (productId: string) => void;
@@ -21,30 +16,48 @@ const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "groozam-cart";
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[] | null>(null);
+  const [storageError, setStorageError] = useState(false);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved) queueMicrotask(() => setItems(JSON.parse(saved) as CartItem[]));
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      try {
+        setItems(readCart(window.localStorage.getItem(STORAGE_KEY)));
+      } catch {
+        setItems([]);
+        setStorageError(true);
+      }
+    });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    if (items === null) return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch {
+      queueMicrotask(() => setStorageError(true));
+    }
   }, [items]);
 
   const value = useMemo<CartContextValue>(() => ({
-    items,
+    items: items ?? [],
+    ready: items !== null,
+    storageError,
     addItem: (item) => setItems((current) => {
+      if (current === null) return current;
       const existing = current.find((saved) => saved.productId === item.productId);
       if (!existing) return [...current, item];
       return current.map((saved) => saved.productId === item.productId
-        ? { ...saved, price: item.price, quantity: saved.quantity + item.quantity }
+        ? { ...saved, price: item.price, quantity: Math.min(MAX_CART_QUANTITY, saved.quantity + item.quantity) }
         : saved);
     }),
-    updateQuantity: (productId, quantity) => setItems((current) => current.map((item) =>
-      item.productId === productId ? { ...item, quantity: Math.max(1, quantity) } : item)),
-    removeItem: (productId) => setItems((current) => current.filter((item) => item.productId !== productId)),
-  }), [items]);
+    updateQuantity: (productId, quantity) => setItems((current) => !Number.isFinite(quantity) ? current : current?.map((item) =>
+      item.productId === productId ? { ...item, quantity: Math.min(MAX_CART_QUANTITY, Math.max(1, Math.floor(quantity))) } : item) ?? null),
+    removeItem: (productId) => setItems((current) => current?.filter((item) => item.productId !== productId) ?? null),
+  }), [items, storageError]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
