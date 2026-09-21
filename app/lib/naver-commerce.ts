@@ -6,6 +6,8 @@ const NAVER_COMMERCE_BASE_URL = "https://api.commerce.naver.com/external";
 
 export type ChannelProduct = {
   originProductNo: number;
+  categoryId?: string;
+  wholeCategoryId?: string;
   name: string;
   statusType: string;
   salePrice: number;
@@ -16,6 +18,7 @@ export type ChannelProduct = {
 
 export type ProductSearchResponse = {
   contents: { channelProducts: ChannelProduct[] }[];
+  totalPages: number;
 };
 
 export type OriginProductImage = { url?: string };
@@ -74,14 +77,19 @@ async function getAccessToken() {
 
 export async function getNaverProducts(): Promise<ProductSearchResponse> {
   const accessToken = await getAccessToken();
-  return searchProducts(accessToken);
+  const result = await searchProducts(accessToken);
+  for (let page = 2; page <= result.totalPages; page += 1) {
+    const nextPage = await searchProducts(accessToken, undefined, page);
+    result.contents.push(...nextPage.contents);
+  }
+  return result;
 }
 
-async function searchProducts(accessToken: string, originProductNo?: string): Promise<ProductSearchResponse> {
+async function searchProducts(accessToken: string, originProductNo?: string, page = 1): Promise<ProductSearchResponse> {
   const response = await fetch(`${NAVER_COMMERCE_BASE_URL}/v1/products/search`, {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ page: 1, size: 100, ...(originProductNo ? { searchKeywordType: "ORIGIN_PRODUCT_NO", originProductNos: [Number(originProductNo)] } : {}) }),
+    body: JSON.stringify({ page, size: 100, ...(originProductNo ? { searchKeywordType: "ORIGIN_PRODUCT_NO", originProductNos: [Number(originProductNo)] } : {}) }),
     cache: "no-store",
   });
   const payload = (await response.json()) as unknown;
