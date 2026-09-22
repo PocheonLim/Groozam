@@ -6,15 +6,29 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import logo from "../../public/rogo.png";
 import { categories } from "@/app/lib/categories";
+import LogoutButton from "./LogoutButton";
+import { createClient } from "@/lib/supabase/client";
 
 const navItems = categories.map((category) => ({ href: `/category/${category.slug}`, label: category.label }));
 
-export default function Header() {
+export default function Header({ authenticated }: { authenticated: boolean }) {
   const pathname = usePathname();
-  return <HeaderBar key={pathname} pathname={pathname} />;
+  const router = useRouter();
+  useEffect(() => {
+    // Auth events only request a new server verdict; their client payload is
+    // never used as the authority for access or the displayed login state.
+    const { data: { subscription } } = createClient().auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") router.refresh();
+    });
+    const restore = (event: PageTransitionEvent) => { if (event.persisted) router.refresh(); };
+    window.addEventListener("pageshow", restore);
+    return () => { subscription.unsubscribe(); window.removeEventListener("pageshow", restore); };
+  }, [router]);
+  return <HeaderBar key={`${pathname}-${authenticated}`} pathname={pathname} authenticated={authenticated} />;
 }
 
-function HeaderBar({ pathname }: { pathname: string }) {
+function HeaderBar({ pathname, authenticated }: { pathname: string; authenticated: boolean }) {
+  const [accountOpen, setAccountOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -69,9 +83,12 @@ function HeaderBar({ pathname }: { pathname: string }) {
           >
             <SearchIcon />
           </button>
-          <IconLink href="/mypage" label="마이페이지" active={pathname === "/mypage"}>
-            <UserIcon />
-          </IconLink>
+          <div className="relative" onKeyDown={(event) => { if (event.key === "Escape") { setAccountOpen(false); event.currentTarget.querySelector("button")?.focus(); } }}>
+            <button type="button" aria-label={authenticated ? "내 계정" : "로그인 및 회원가입"} aria-expanded={accountOpen} aria-controls="account-nav" className={iconControlClass} onClick={() => setAccountOpen((open) => !open)}><UserIcon /></button>
+            {accountOpen && <nav id="account-nav" aria-label="회원 메뉴" className="absolute right-0 top-full mt-4 w-56 space-y-2 border border-stone-200 bg-white p-5 shadow-sm">
+              {authenticated ? <><Link href="/mypage" className="block py-2 text-sm">마이페이지</Link><LogoutButton /></> : <><Link href="/login" className="block py-2 text-sm">로그인</Link><Link href="/signup" className="block py-2 text-sm">회원가입</Link></>}
+            </nav>}
+          </div>
           <IconLink href="/cart" label="장바구니" active={pathname === "/cart"}>
             <BagIcon />
           </IconLink>
