@@ -23,6 +23,20 @@ export type ProductSearchResponse = {
 
 export type OriginProductImage = { url?: string };
 
+export type ProductDeliveryInfo = {
+  deliveryType?: string;
+  installationFee?: boolean;
+  deliveryFee?: {
+    deliveryFeeType?: string;
+    baseFee?: number;
+    freeConditionalAmount?: number;
+    repeatQuantity?: number;
+    deliveryFeePayType?: string;
+    differentialFeeByArea?: string;
+    deliveryFeeByArea?: { deliveryAreaType?: string; area2extraFee?: number; area3extraFee?: number };
+  };
+};
+
 export type OriginProduct = {
   statusType: string;
   originProductNo: number;
@@ -34,6 +48,7 @@ export type OriginProduct = {
     optionalImages?: OriginProductImage[];
   };
   detailContent?: string;
+  deliveryInfo?: ProductDeliveryInfo;
 };
 
 type OriginProductResponse = {
