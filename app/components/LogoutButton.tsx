@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LogoutButton() {
+export default function LogoutButton({ compact = false }: { compact?: boolean } = {}) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const busy = useRef(false);
@@ -23,8 +23,8 @@ export default function LogoutButton() {
       setPending(false);
     }
   }
-  return <div>
-    <button type="button" onClick={logout} disabled={pending} className="py-2 text-sm text-stone-600 hover:text-stone-950 disabled:opacity-50">{pending ? "로그아웃 중…" : "로그아웃"}</button>
-    {error && <p role="alert" className="max-w-56 text-xs leading-5 text-stone-600">{error}</p>}
+  return <div className={compact ? "relative" : undefined}>
+    <button type="button" onClick={logout} disabled={pending} aria-busy={pending} className={`whitespace-nowrap py-2 text-stone-600 hover:text-stone-950 disabled:opacity-50 ${compact ? "text-xs max-[360px]:text-[11px]" : "text-sm"}`}>{pending && !compact ? "로그아웃 중…" : "로그아웃"}</button>
+    {error && <p role="alert" className={`text-xs leading-5 text-stone-600 ${compact ? "absolute right-0 top-full mt-4 w-48 border border-stone-200 bg-white p-3 shadow-sm" : "max-w-56"}`}>{error}</p>}
   </div>;
 }

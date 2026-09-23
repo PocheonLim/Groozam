@@ -8,7 +8,6 @@
 | --- | --- |
 | `migrations/20260922013649_create_member_schema.sql` | 일회성 초기 migration. 트랜잭션으로 전체 적용 또는 롤백 |
 | `checks/member_schema_preflight.sql` | 기존 객체·함수·Auth 트리거·RLS 확인용 읽기 전용 SQL |
-| `tests/member_schema.sql` | 로컬/일회성 테스트 DB용 권한·제약·트리거 검증. 끝에서 롤백 |
 
 ## 사전 확인 결과
 
@@ -77,13 +76,7 @@ PGlite 0.5.8 / PostgreSQL 18.3의 일회성 메모리 DB에서 Supabase의 `anon
 
 1. Supabase Dashboard SQL Editor에서 **`checks/member_schema_preflight.sql`만 먼저 실행**한다. 첫 결과에서 auth.users/auth.uid/UUID 함수 존재 여부를 확인한다. 나머지 결과에 기존 객체가 있다면 삭제하지 말고 스키마·migration 이력을 먼저 비교한다. 이름이 다른 기존 Auth 트리거도 확인한다.
 2. CLI와 Docker를 준비한 개발 환경에서 프로젝트 루트에 `supabase init`을 실행해 config.toml을 생성한다. 이미 생성되어 있다면 덮어쓰지 않는다. 현재 `migrations/`는 CLI 표준 위치다.
-3. 로컬 검증: `supabase start`, `supabase migration up --local` 후 아래 SQL 테스트를 **로컬 DB에서만** 실행한다.
-
-   ```sh
-   psql "<LOCAL_DB_URL>" -v ON_ERROR_STOP=1 -f supabase/tests/member_schema.sql
-   ```
-
-   이 테스트는 Auth에 테스트 행을 넣었다가 롤백한다. 외부 Auth 트리거의 부수 효과까지 롤백할 수는 없으므로 운영 원격 DB에서 실행하지 않는다.
+3. 로컬 검증: `supabase start`, `supabase migration up --local` 후 로컬 DB에서 테이블·RLS·트리거를 확인한다. 개발 당시 사용한 일회성 SQL 테스트 파일은 이후 정리했다.
 
 4. 원격 적용을 결정했을 때 `supabase login`, `supabase link --project-ref <PROJECT_REF>`, `supabase migration list`로 대상과 이력을 확인한다. 기존 원격 migration이 있으면 먼저 이력을 정리한다. 비밀번호나 DB URL을 코드/Git에 적지 않는다.
 5. `supabase db push --dry-run`으로 이번 파일만 대기 중인지 확인하고, 문제가 없으면 `supabase db push`로 적용한다. `db reset`은 사용하지 않는다. CLI migration 이력을 유지하려면 같은 migration을 SQL Editor에서 별도로 중복 실행하지 않는다.

@@ -28,7 +28,6 @@ export default function Header({ authenticated }: { authenticated: boolean }) {
 }
 
 function HeaderBar({ pathname, authenticated }: { pathname: string; authenticated: boolean }) {
-  const [accountOpen, setAccountOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -48,7 +47,7 @@ function HeaderBar({ pathname, authenticated }: { pathname: string; authenticate
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white">
       <div className="mx-auto grid h-[72px] max-w-[1440px] grid-cols-[1fr_auto_1fr] items-center px-10 max-lg:flex max-lg:h-16 max-lg:justify-between max-lg:px-5">
-        <Link href="/" aria-label="GROOZAM 홈" className="justify-self-start">
+        <Link href="/" aria-label="GROOZAM 홈" className="shrink-0 justify-self-start">
           <Image
             src={logo}
             alt="GROOZAM"
@@ -71,7 +70,7 @@ function HeaderBar({ pathname, authenticated }: { pathname: string; authenticate
           ))}
         </nav>
 
-        <div className="flex items-center justify-end gap-5 justify-self-end">
+        <div className="flex items-center justify-end gap-5 justify-self-end max-sm:gap-1 max-[360px]:gap-0">
           <button
             ref={searchButton}
             type="button"
@@ -83,12 +82,10 @@ function HeaderBar({ pathname, authenticated }: { pathname: string; authenticate
           >
             <SearchIcon />
           </button>
-          <div className="relative" onKeyDown={(event) => { if (event.key === "Escape") { setAccountOpen(false); event.currentTarget.querySelector("button")?.focus(); } }}>
-            <button type="button" aria-label={authenticated ? "내 계정" : "로그인 및 회원가입"} aria-expanded={accountOpen} aria-controls="account-nav" className={iconControlClass} onClick={() => setAccountOpen((open) => !open)}><UserIcon /></button>
-            {accountOpen && <nav id="account-nav" aria-label="회원 메뉴" className="absolute right-0 top-full mt-4 w-56 space-y-2 border border-stone-200 bg-white p-5 shadow-sm">
-              {authenticated ? <><Link href="/mypage" className="block py-2 text-sm">마이페이지</Link><LogoutButton /></> : <><Link href="/login" className="block py-2 text-sm">로그인</Link><Link href="/signup" className="block py-2 text-sm">회원가입</Link></>}
-            </nav>}
-          </div>
+          {authenticated ? <>
+            <IconLink href="/mypage" label="마이페이지" active={pathname === "/mypage"} compact><UserIcon /></IconLink>
+            <LogoutButton compact />
+          </> : <Link href="/login" className="whitespace-nowrap py-2 text-xs text-neutral-900 hover:opacity-45">로그인</Link>}
           <IconLink href="/cart" label="장바구니" active={pathname === "/cart"}>
             <BagIcon />
           </IconLink>
@@ -163,18 +160,20 @@ function IconLink({
   href,
   label,
   active,
+  compact = false,
   children,
 }: {
   href: string;
   label: string;
   active: boolean;
+  compact?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
       aria-label={label}
-      className={`${iconControlClass} ${active ? "opacity-45" : ""}`}
+      className={`${iconControlClass} ${active ? "opacity-45" : ""} ${compact ? "max-[360px]:w-6" : ""}`}
     >
       {children}
     </Link>

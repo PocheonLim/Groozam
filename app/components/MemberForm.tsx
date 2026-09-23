@@ -72,7 +72,7 @@ export default function MemberForm({ mode, next }: { mode: Mode; next?: string }
       }
       // Existing accounts may receive an obfuscated success response. Do not
       // promise delivery or infer that a new account was created from that response.
-      setNotice("이메일을 확인해 주세요. 인증 메일이 도착했다면 가입한 기기와 브라우저에서 링크를 열어 주세요. 스팸함도 확인해 주세요. 이미 가입한 주소에는 새 인증 메일이 발송되지 않을 수 있습니다.");
+      setNotice("이메일을 확인해 주세요. 인증 메일이 도착했다면 가입한 기기와 브라우저에서 링크를 열어 주세요. 스팸함도 확인해 주세요. 이미 가입한 회원이라면 아래에서 로그인할 수 있습니다. 기존 회원에게는 새 인증 메일이 발송되지 않을 수 있습니다.");
     } catch {
       console.warn("[auth] Request unavailable");
       setComplete(false);
@@ -112,8 +112,12 @@ export default function MemberForm({ mode, next }: { mode: Mode; next?: string }
     </form>
 
     {notice && <p role="status" className="mt-5 border border-stone-200 bg-stone-50 p-4 text-sm leading-6 text-stone-700">{notice}</p>}
+    {signup && notice && <div className="mt-4 text-center text-sm text-stone-600">
+      <div className="flex justify-center gap-6"><Link href="/login" className="underline underline-offset-4">로그인하기</Link><Link href="/forgot-password" className="underline underline-offset-4">비밀번호 찾기</Link></div>
+      <p className="mt-3 text-xs text-stone-500">비밀번호 재설정 기능은 준비 중입니다.</p>
+    </div>}
     <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm text-stone-600">
-      <Link href={signup || reset ? "/login" : "/signup"} className="underline-offset-4 hover:underline">{signup || reset ? "로그인으로 돌아가기" : "이메일로 회원가입"}</Link>
+      {!(signup && notice) && <Link href={signup || reset ? "/login" : "/signup"} className="underline-offset-4 hover:underline">{signup || reset ? "로그인으로 돌아가기" : "이메일로 회원가입"}</Link>}
       {mode === "login" && <Link href="/forgot-password" className="underline-offset-4 hover:underline">비밀번호 찾기</Link>}
     </div>
   </>;

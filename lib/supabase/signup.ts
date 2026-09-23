@@ -12,7 +12,7 @@ export function signupErrorMessage(code?: string): string {
     case "validation_failed": return "이메일 주소와 입력 내용을 다시 확인해 주세요.";
     case "weak_password": return "더 안전한 비밀번호를 사용해 주세요. 영문, 숫자, 특수문자를 조합해 주세요.";
     case "user_already_exists":
-    case "email_exists": return "이미 가입된 이메일일 수 있습니다. 이메일 주소와 기존 가입 여부를 확인해 주세요.";
+    case "email_exists": return "이미 가입된 이메일입니다. 로그인해 주세요.";
     case "over_email_send_rate_limit":
     case "over_request_rate_limit": return "요청이 많습니다. 잠시 후 다시 시도해 주세요.";
     case "signup_disabled":
