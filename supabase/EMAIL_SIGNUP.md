@@ -2,7 +2,7 @@
 
 회원가입 폼 → 입력 검증 → 브라우저 SSR client의 `auth.signUp` → Auth가 UUID 생성 → 기존 DB trigger가 `profiles.id` 생성 → 이메일 확인 안내 순서다. 앱은 profiles를 INSERT하지 않는다.
 
-가입 폼에는 이름/전화번호 입력이 없으며 인증 후 마이페이지에서 등록한다. Confirm email이 켜져 있으면 인증 전 세션이 없어 profile UPDATE와 member_consents INSERT를 하지 않는다. 약관은 필수 두 개와 선택 마케팅 두 개로 분리되어 있으며 draft 상태에서는 체크 여부만 검증한다. 문서 확정과 인증 후 동의 기록 설계는 [LEGAL_CONSENTS.md](./LEGAL_CONSENTS.md)를 참고한다.
+가입 폼에는 필수 휴대전화 입력이 있으며 이름은 인증 후 마이페이지에서 등록한다. 휴대전화는 암호화된 HttpOnly 임시 쿠키로 전달하고 이메일 인증 후 서버가 검증한 사용자의 빈 profiles.phone에 저장한다. 자세한 흐름과 환경변수는 [SIGNUP_PHONE.md](./SIGNUP_PHONE.md)를 참고한다. 인증 전 profile UPDATE나 member_consents INSERT는 하지 않는다. 약관은 필수 두 개와 선택 마케팅 두 개로 분리되어 있으며 draft 상태에서는 체크 여부만 검증한다. 문서 확정과 인증 후 동의 기록 설계는 [LEGAL_CONSENTS.md](./LEGAL_CONSENTS.md)를 참고한다.
 
 ## Dashboard 설정
 
@@ -23,6 +23,6 @@
 
 개발 당시 입력값, 중복 제출, 가려진 성공 응답, callback 오류 처리, 외부 목적지 무시 및 로그인/헤더를 모의 검증했다. 테스트 파일은 이후 정리했으며 아래 수동 확인 절차를 사용한다. 모의 검증은 실제 Supabase 계정 생성이나 메일 수신 검증을 대체하지 않는다.
 
-실제 개발 프로젝트 확인은 수신 가능한 본인 이메일로 가입 후 같은 브라우저에서 인증 링크를 연다. Dashboard Authentication → Users의 UUID와 Table Editor → profiles.id가 일치하는지 확인한다. 이름/전화번호는 비어 있고 member_consents에는 이번 가입으로 행이 생성되지 않는 것이 현재 동작이다. 테스트 계정은 자동 삭제하지 않는다.
+실제 개발 프로젝트 확인은 수신 가능한 본인 이메일로 가입 후 같은 브라우저에서 1시간 이내 인증 링크를 연다. Dashboard Authentication → Users의 UUID와 Table Editor → profiles.id가 일치하고 phone에 숫자 11자리가 저장되는지 확인한다. 이름은 별도 등록 전까지 비어 있으며 member_consents에는 이번 가입으로 행이 생성되지 않는다. 테스트 계정은 자동 삭제하지 않는다.
 
 참고: [signUp](https://supabase.com/docs/reference/javascript/auth-signup), [PKCE](https://supabase.com/docs/guides/auth/sessions/pkce-flow), [Redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls).
