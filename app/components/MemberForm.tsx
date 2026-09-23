@@ -5,6 +5,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { signupErrorMessage, validateSignup } from "@/lib/supabase/signup";
 import { loginErrorMessage, safeNext, validateLogin } from "@/lib/supabase/login";
+import { consentDocuments, consentTypes, emptyConsentChoices, type ConsentChoices } from "@/lib/supabase/consents";
 
 type Mode = "login" | "signup" | "reset";
 const inputClass = "mt-2 w-full rounded-none border border-stone-300 bg-white px-4 py-3.5 text-sm outline-offset-4 focus-visible:outline-stone-700";
@@ -14,6 +15,8 @@ export default function MemberForm({ mode, next }: { mode: Mode; next?: string }
   const [visible, setVisible] = useState(false);
   const [pending, setPending] = useState(false);
   const [complete, setComplete] = useState(false);
+  const [consents, setConsents] = useState<ConsentChoices>({ ...emptyConsentChoices });
+  const allConsented = consentTypes.every((type) => consents[type]);
   const submitting = useRef(false);
   const signup = mode === "signup";
   const reset = mode === "reset";
@@ -30,7 +33,7 @@ export default function MemberForm({ mode, next }: { mode: Mode; next?: string }
     const email = String(fields.get("email") ?? "").trim();
     const password = String(fields.get("password") ?? "");
     const validation = signup
-      ? validateSignup(email, password, String(fields.get("passwordConfirm") ?? ""), fields.get("terms") === "on")
+      ? validateSignup(email, password, String(fields.get("passwordConfirm") ?? ""), consents)
       : validateLogin(email, password);
     if (validation) { setNotice(validation); return; }
     submitting.current = true;
@@ -62,6 +65,7 @@ export default function MemberForm({ mode, next }: { mode: Mode; next?: string }
       }
       if (!data.user) { setNotice(signupErrorMessage()); return; }
       form.reset();
+      setConsents({ ...emptyConsentChoices });
       setVisible(false);
       setComplete(true);
       if (data.session) {
@@ -103,8 +107,15 @@ export default function MemberForm({ mode, next }: { mode: Mode; next?: string }
         {signup && <label className="block text-sm" htmlFor="member-confirm">비밀번호 확인<input id="member-confirm" name="passwordConfirm" type={visible ? "text" : "password"} autoComplete="new-password" required minLength={8} maxLength={128} className={inputClass} placeholder="비밀번호를 한 번 더 입력해 주세요" /></label>}
       </>}
       {signup && <div className="border-y border-stone-200 py-5 text-sm">
-        <label className="flex items-start gap-3"><input type="checkbox" name="terms" required className="mt-1 size-4 accent-stone-900" /><span>[필수] 이용약관 및 개인정보 수집·이용 동의</span></label>
-        <p className="mt-3 text-xs leading-5 text-stone-500">현재는 동의 여부만 확인하며 동의 이력은 저장하지 않습니다. 정식 약관과 개인정보 안내는 서비스 오픈 전에 제공됩니다.</p>
+        <label className="mb-5 flex items-start gap-3 border-b border-stone-200 pb-5 font-medium"><input type="checkbox" checked={allConsented} ref={(element) => { if (element) element.indeterminate = !allConsented && consentTypes.some((type) => consents[type]); }} onChange={(event) => { const checked = event.target.checked; setConsents({ terms: checked, privacy: checked, marketing_email: checked, marketing_sms: checked }); setNotice(""); }} className="mt-1 size-4 accent-stone-900" /><span>전체 동의 <span className="font-normal text-stone-500">(선택 항목 포함)</span></span></label>
+        <div className="space-y-4">{consentTypes.map((type) => {
+          const item = consentDocuments[type];
+          return <div key={type} className="flex items-start justify-between gap-3">
+            <label className="flex items-start gap-3"><input type="checkbox" name={type} required={item.required} checked={consents[type]} onChange={(event) => { setConsents((current) => ({ ...current, [type]: event.target.checked })); setNotice(""); }} className="mt-1 size-4 shrink-0 accent-stone-900" /><span>[{item.required ? "필수" : "선택"}] {item.label}</span></label>
+            <Link href={item.document.path} target="_blank" rel="noopener noreferrer" aria-label={`${item.label} 내용 보기 (새 탭)`} className="shrink-0 text-xs leading-6 text-stone-500 underline underline-offset-4">보기</Link>
+          </div>;
+        })}</div>
+        <p className="mt-5 text-xs leading-5 text-stone-500">약관 문서는 검토 중입니다. 현재 체크는 가입 화면의 입력 확인에만 사용하며 동의 이력과 마케팅 수신 동의는 저장하지 않습니다. 선택 항목에 동의하지 않아도 가입할 수 있습니다.</p>
       </div>}
       <button type="submit" disabled={pending || complete} className="w-full bg-stone-900 px-5 py-4 text-sm text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60">{pending ? (signup ? "가입 요청 중…" : "로그인 중…") : complete ? (signup ? "가입 요청 완료" : "이동 중…") : reset ? "재설정 메일 받기" : signup ? "회원가입" : "로그인"}</button>
       </fieldset>

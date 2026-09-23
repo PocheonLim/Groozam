@@ -10,9 +10,9 @@
 
 ## 약관 기록 보류
 
-실제 이용약관/개인정보/마케팅 문서와 document_version은 현재 없다. `lib/supabase/consents.ts`는 필수 terms/privacy, 선택 marketing_email/marketing_sms 및 아직 미정인 문서(null)를 구분하는 준비 구조다. DB INSERT 경로는 연결하지 않았다. 가짜 버전/이력이나 migration을 생성하지 않았다.
+확정된 운영 문서와 document_version은 아직 없다. `lib/legal/documents.ts`에서 draft 문서와 미확정 버전을 관리하고 `lib/supabase/consents.ts`에서 필수/선택 항목을 구분한다. DB INSERT 경로는 연결하지 않았다. 현재 준비 상태와 저장 설계는 [LEGAL_CONSENTS.md](./LEGAL_CONSENTS.md)를 참고한다.
 
-현재 가입 화면에는 이용약관과 개인정보 동의가 하나의 필수 체크박스로 묶여 있고 마케팅 체크박스는 없다. 기존 검증은 유지하되 실제 이력으로 간주하지 않는다. 문서가 마련되면 각각의 문서·서버 관리 버전을 표시하고 구분된 동의를 받는 단계가 필요하다.
+현재 가입 화면에는 이용약관/개인정보 필수 항목과 이메일/SMS 마케팅 선택 항목이 분리되어 있다. 전체 동의는 편의 기능이며 개별 선택값이 기준이다. draft 상태의 체크는 실제 동의 이력으로 간주하지 않는다.
 
 권장 후속 저장 시점은 이메일 인증 후 서버가 사용자를 검증한 시점이다. 공개 문서를 다시 보여주고 명시적으로 동의를 받은 후, 서버가 선택한 실제 버전과 인증된 UUID로 append-only INSERT한다. 인증 전 체크 상태를 localStorage에서 가져와 동의 이력으로 확정하지 않는다. 가입 시점 기록이 꼭 필요하면 별도의 검증 가능한 일회성 전달 설계가 필요하다. 철회도 UPDATE/DELETE 대신 새 false 행을 추가해야 한다.
 

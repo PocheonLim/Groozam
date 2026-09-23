@@ -1,9 +1,10 @@
-export function validateSignup(email: string, password: string, confirmation: string, terms: boolean): string | null {
+import { validateRequiredConsents, type ConsentChoices } from "./consents";
+
+export function validateSignup(email: string, password: string, confirmation: string, consents: ConsentChoices): string | null {
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "올바른 이메일 주소를 입력해 주세요.";
   if (password.length < 8 || password.length > 128) return "비밀번호는 8자 이상 128자 이하로 입력해 주세요.";
   if (password !== confirmation) return "비밀번호가 일치하지 않습니다. 다시 확인해 주세요.";
-  if (!terms) return "필수 약관에 동의해 주세요.";
-  return null;
+  return validateRequiredConsents(consents);
 }
 
 export function signupErrorMessage(code?: string): string {

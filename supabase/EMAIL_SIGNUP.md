@@ -2,7 +2,7 @@
 
 회원가입 폼 → 입력 검증 → 브라우저 SSR client의 `auth.signUp` → Auth가 UUID 생성 → 기존 DB trigger가 `profiles.id` 생성 → 이메일 확인 안내 순서다. 앱은 profiles를 INSERT하지 않는다.
 
-이름 입력은 비활성화했다. 전화번호 입력은 기존 폼에 없다. Confirm email이 켜져 있으면 인증 전 세션이 없어 profile UPDATE와 member_consents INSERT를 하지 않는다. 약관은 체크 여부만 검증하고 문서 버전이나 이력을 저장하지 않는다. 실제 약관 공개와 인증 후 동의 기록은 정식 서비스 전 후속 작업이다.
+가입 폼에는 이름/전화번호 입력이 없으며 인증 후 마이페이지에서 등록한다. Confirm email이 켜져 있으면 인증 전 세션이 없어 profile UPDATE와 member_consents INSERT를 하지 않는다. 약관은 필수 두 개와 선택 마케팅 두 개로 분리되어 있으며 draft 상태에서는 체크 여부만 검증한다. 문서 확정과 인증 후 동의 기록 설계는 [LEGAL_CONSENTS.md](./LEGAL_CONSENTS.md)를 참고한다.
 
 ## Dashboard 설정
 
