@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/supabase/user";
 import { createClient } from "@/lib/supabase/server";
 import LogoutButton from "@/app/components/LogoutButton";
+import ProfileForm from "@/app/components/ProfileForm";
 
 export const metadata: Metadata = { title: "마이페이지 | GROOZAM", description: "그루잠 주문·배송 및 회원정보", robots: { index: false } };
 
@@ -30,7 +31,7 @@ export default async function MyPage({ searchParams }: { searchParams: Promise<{
     <p className="text-xs tracking-[0.18em] text-stone-500">MY GROOZAM</p>
     <h1 className="mt-3 text-3xl font-medium">마이페이지</h1>
     <div className="mt-8 flex flex-col justify-between gap-6 bg-stone-50 p-6 sm:flex-row sm:items-center md:p-8">
-      <div><h2 className="text-xl font-medium">그루잠에 오신 것을 환영합니다.</h2><p className="mt-3 break-all text-sm leading-6 text-stone-600">{user.email}</p><p className="mt-2 text-xs text-stone-500">주문·배송 및 회원정보 수정 기능은 준비 중입니다.</p></div>
+      <div><h2 className="text-xl font-medium">그루잠에 오신 것을 환영합니다.</h2><p className="mt-3 break-all text-sm leading-6 text-stone-600">{user.email}</p><p className="mt-2 text-xs text-stone-500">회원정보에서 이름과 휴대전화를 관리할 수 있습니다.</p></div>
       <LogoutButton />
     </div>
 
@@ -48,9 +49,7 @@ export default async function MyPage({ searchParams }: { searchParams: Promise<{
           <div className="mt-4 grid gap-4 sm:grid-cols-2">{[{ href: "addresses", title: "배송지 관리", text: "자주 사용하는 배송지를 관리하세요." }, { href: "profile", title: "회원정보", text: "기본 정보와 연결 계정을 확인하세요." }].map((card) => <Link key={card.href} href={`/mypage?section=${card.href}`} className="border border-stone-200 p-6 hover:border-stone-500"><h3 className="font-medium">{card.title} <span aria-hidden="true" className="float-right">→</span></h3><p className="mt-3 text-sm leading-6 text-stone-500">{card.text}</p></Link>)}</div>
         </> : current.key === "profile" ? <>
           <h2 className="border-b border-stone-900 pb-4 text-lg font-medium">회원정보</h2>
-          <dl className="divide-y divide-stone-200 border-b border-stone-200">{[["이름", profile?.display_name ?? "미등록"], ["이메일", user.email ?? "—"], ["연락처", profile?.phone ?? "미등록"], ["소셜 계정 연결", "준비 중"]].map(([label, value]) => <div key={label} className="grid grid-cols-[120px_1fr] gap-4 py-5 text-sm"><dt className="text-stone-600">{label}</dt><dd className="break-all text-stone-600">{value}</dd></div>)}</dl>
-          {(profileError || !profile) && <p role="status" className="mt-4 text-sm text-stone-500">회원정보를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.</p>}
-          <ComingSoon text="회원정보 변경과 소셜 계정 연결 기능은 준비 중입니다." />
+          {profileError || !profile ? <p role="status" className="mt-4 text-sm text-stone-500">회원정보를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.</p> : <ProfileForm email={user.email ?? "—"} profile={profile} />}
         </> : <>
           <h2 className="border-b border-stone-900 pb-4 text-lg font-medium">{current.label}</h2>
           <ComingSoon text={current.key === "addresses" ? "배송지 등록 및 관리 기능은 준비 중입니다." : current.key === "claims" ? "취소·교환·반품 기능은 준비 중입니다." : "주문·배송 조회 기능은 준비 중입니다."} />

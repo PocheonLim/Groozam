@@ -95,7 +95,6 @@ export default function MemberForm({ mode, next }: { mode: Mode; next?: string }
 
     <form method="post" onSubmit={handleSubmit} noValidate={!reset} aria-busy={pending} className="space-y-5">
       <fieldset disabled={pending || complete} className="min-w-0 space-y-5">
-      {signup && <label className="block text-sm" htmlFor="member-name">이름<input id="member-name" name="name" autoComplete="name" disabled maxLength={50} className={inputClass} placeholder="회원정보 등록 기능 준비 중" /><span className="mt-2 block text-xs text-stone-500">이름은 현재 저장하지 않습니다. 추후 회원정보에서 등록할 수 있습니다.</span></label>}
       <label className="block text-sm" htmlFor="member-email">이메일<input id="member-email" name="email" type="email" autoComplete="email" required maxLength={254} className={inputClass} placeholder="example@email.com" /></label>
       {!reset && <>
         <div><div className="flex items-center justify-between"><label className="text-sm" htmlFor="member-password">비밀번호</label><button type="button" aria-controls="member-password" aria-pressed={visible} onClick={() => setVisible((value) => !value)} className="py-1 text-xs text-stone-500">{visible ? "숨기기" : "보기"}</button></div>
