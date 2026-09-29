@@ -5,7 +5,7 @@ export default function LegalDocument({ document, related = [] }: { document: Do
   return <main className="mx-auto max-w-3xl px-5 py-12 md:py-20">
     <p className="text-xs tracking-[0.18em] text-stone-500">GROOZAM</p>
     <h1 className="mt-4 text-3xl font-medium">{document.title}</h1>
-    {document.status === "draft" && <p role="note" className="mt-6 border border-stone-200 bg-stone-50 p-5 text-sm leading-7 text-stone-700">이 문서는 검토 중인 준비 페이지입니다. 최종 운영 문서가 아니며 법률 검토와 사업자 정보 확인 후 확정됩니다. 현재 이 문서에 대한 동의 이력은 저장하지 않습니다.</p>}
+    {document.status === "draft" && <p role="note" className="mt-6 border border-stone-200 bg-stone-50 p-5 text-sm leading-7 text-stone-700">사업자 정보와 운영정책을 반영한 검토용 초안입니다. 개인정보 처리·위탁 및 동의 철회 등 남은 운영사항을 확인하고 법률 검토를 거쳐 확정합니다. 아직 시행 중인 문서가 아니며, 문서 확정 전에는 신규 회원가입을 진행할 수 없습니다.</p>}
     {[document, ...related].map((item) => <div key={item.path} className="mt-8">
       <dl className="flex flex-wrap gap-x-6 gap-y-2 border-b border-stone-200 pb-5 text-sm text-stone-600">
         <div><dt className="inline">문서: </dt><dd className="inline">{item.title}</dd></div>
