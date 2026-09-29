@@ -5,6 +5,8 @@ import { getCurrentUser } from "@/lib/supabase/user";
 import { createClient } from "@/lib/supabase/server";
 import LogoutButton from "@/app/components/LogoutButton";
 import ProfileForm from "@/app/components/ProfileForm";
+import AddressManager from "@/app/components/AddressManager";
+import { getAddresses } from "@/lib/supabase/address-data";
 
 export const metadata: Metadata = { title: "마이페이지 | GROOZAM", description: "그루잠 주문·배송 및 회원정보", robots: { index: false } };
 
@@ -26,6 +28,7 @@ export default async function MyPage({ searchParams }: { searchParams: Promise<{
   }
   const supabase = await createClient();
   const { data: profile, error: profileError } = await supabase.from("profiles").select("id, display_name, phone").eq("id", user.id).maybeSingle();
+  const addressList = current.key === "addresses" ? await getAddresses() : null;
 
   return <main className="mx-auto max-w-[1200px] px-5 py-12 md:px-10 md:py-20">
     <p className="text-xs tracking-[0.18em] text-stone-500">MY GROOZAM</p>
@@ -50,9 +53,9 @@ export default async function MyPage({ searchParams }: { searchParams: Promise<{
         </> : current.key === "profile" ? <>
           <h2 className="border-b border-stone-900 pb-4 text-lg font-medium">회원정보</h2>
           {profileError || !profile ? <p role="status" className="mt-4 text-sm text-stone-500">회원정보를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.</p> : <ProfileForm email={user.email ?? "—"} profile={profile} />}
-        </> : <>
+        </> : current.key === "addresses" && addressList ? <AddressManager addresses={addressList.addresses} loadError={addressList.error} /> : <>
           <h2 className="border-b border-stone-900 pb-4 text-lg font-medium">{current.label}</h2>
-          <ComingSoon text={current.key === "addresses" ? "배송지 등록 및 관리 기능은 준비 중입니다." : current.key === "claims" ? "취소·교환·반품 기능은 준비 중입니다." : "주문·배송 조회 기능은 준비 중입니다."} />
+          <ComingSoon text={current.key === "claims" ? "취소·교환·반품 기능은 준비 중입니다." : "주문·배송 조회 기능은 준비 중입니다."} />
         </>}
       </section>
     </div>
