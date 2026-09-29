@@ -3,7 +3,7 @@
 ## 흐름
 
 1. 가입과 회원정보에서 동일한 PhoneInput/formatPhoneInput/validateProfile을 사용한다. 가입 시 010 숫자 11자리는 필수다. 자동 하이픈을 표시하며 하이픈 포함 붙여넣기도 지원한다. 문자/공백/특수문자/초과 자릿수는 오류와 함께 남겨 수정할 수 있게 하고 제출을 차단한다. 회원정보에서는 기존처럼 비워 저장할 수 있다.
-2. 가입 직전 Server Action이 입력을 재검증하고 정규화한 이메일·숫자 전화번호·만료 시각을 AES-256-GCM으로 암호화/인증한 HttpOnly 쿠키에 저장한다. SameSite=Lax, 운영 Secure, 유효기간 1시간이다. 기존 브라우저 signUp/PKCE 흐름은 유지한다.
+2. 가입 직전 Server Action이 입력을 재검증하고 정규화한 이메일·숫자 전화번호·만료 시각을 AES-256-GCM으로 암호화/인증한 HttpOnly 쿠키에 저장한다. SameSite=Lax, 운영 Secure, 유효기간 1시간이다. 동의 기록 연결 후 signUp은 같은 서버 처리에서 호출하며 PKCE 쿠키/callback 흐름은 유지한다. [MEMBER_CONSENTS.md](./MEMBER_CONSENTS.md) 참고.
 3. callback의 세션 교환이 성공한 후 getUser()로 인증된 이메일을 확인한다. 쿠키 이메일과 일치하고 이메일 인증이 완료되어 있어야 한다. 사용자 ID는 클라이언트나 쿠키에서 받지 않는다.
 4. publishable key와 해당 사용자 세션으로 profiles.id=user.id AND phone IS NULL 행의 phone만 UPDATE한다. 숫자 11자리만 기록하고 이름은 건드리지 않는다. updated_at은 기존 DB trigger가 처리한다. 기존 번호가 있으면 그대로 유지한다.
 5. 정상 처리 후 쿠키를 삭제한다. 재시도 시 기존 번호를 덮어쓰지 않는다. 만료·다른 이메일·변조·저장 오류는 자동 저장을 생략하고 인증 완료 화면에서 회원정보 확인을 안내한다. 인증 실패 경로도 임시 쿠키를 삭제하며 profile을 수정하지 않는다. 네트워크로 가입 응답이 유실되면 인증 메일이 이미 발송됐을 수 있어 쿠키는 만료 전까지 유지한다.

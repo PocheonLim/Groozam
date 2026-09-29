@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { saveSignupPhone, signupPhoneCookie } from "@/lib/supabase/signup-phone";
+import { saveSignupConsents, signupConsentCookie } from "@/lib/supabase/signup-consents";
 
 export async function GET(request: NextRequest) {
   const response = NextResponse.redirect(new URL("/signup?error=confirmation", request.url));
@@ -34,6 +35,9 @@ export async function GET(request: NextRequest) {
     if (!error && data.session) {
       const saved = await saveSignupPhone(supabase, request.cookies.get(signupPhoneCookie)?.value);
       response.cookies.delete(signupPhoneCookie);
+      const consents = await saveSignupConsents(supabase, request.cookies.get(signupConsentCookie)?.value);
+      if (consents === "saved") response.cookies.delete(signupConsentCookie);
+      // Keep valid pending data on storage failure so the confirmed page can retry.
       return redirect(saved ? "/auth/confirmed" : "/auth/confirmed?phone=missing");
     }
     console.warn("[auth/callback] Session exchange failed", { status: error?.status });

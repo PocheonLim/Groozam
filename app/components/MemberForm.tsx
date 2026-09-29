@@ -5,10 +5,10 @@ import { useRef, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { signupErrorMessage, validateSignup } from "@/lib/supabase/signup";
 import { loginErrorMessage, safeNext, validateLogin } from "@/lib/supabase/login";
-import { consentDocuments, consentTypes, emptyConsentChoices, type ConsentChoices } from "@/lib/supabase/consents";
+import { consentDocuments, consentTypes, emptyConsentChoices, getActiveConsentVersions, type ConsentChoices } from "@/lib/supabase/consents";
 import PhoneInput from "./PhoneInput";
 import { validateProfile } from "@/lib/supabase/profile";
-import { prepareSignupPhone, clearSignupPhone, finishSignupPhone } from "@/app/signup/actions";
+import { signupWithConsents } from "@/app/signup/actions";
 
 type Mode = "login" | "signup" | "reset";
 const inputClass = "mt-2 w-full rounded-none border border-stone-300 bg-white px-4 py-3.5 text-sm outline-offset-4 focus-visible:outline-stone-700";
@@ -25,6 +25,7 @@ export default function MemberForm({ mode, next }: { mode: Mode; next?: string }
   const submitting = useRef(false);
   const signup = mode === "signup";
   const reset = mode === "reset";
+  const consentVersions = getActiveConsentVersions();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,30 +63,21 @@ export default function MemberForm({ mode, next }: { mode: Mode; next?: string }
         window.location.assign(safeNext(next));
         return;
       }
-      const prepared = await prepareSignupPhone(email, phone);
-      if (prepared.error) { setNotice(prepared.error); return; }
-      const { data, error } = await createClient().auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: new URL("/auth/callback", window.location.origin).toString() },
-      });
-      if (error) {
-        await clearSignupPhone().catch(() => undefined);
-        console.warn("[auth/signup] Request failed", { status: error.status });
-        setNotice(signupErrorMessage(error.code));
-        return;
+      for (const type of consentTypes) {
+        fields.set(type, String(consents[type]));
+        fields.set(`version_${type}`, consentVersions?.[type] ?? "");
       }
-      if (!data.user) { await clearSignupPhone().catch(() => undefined); setNotice(signupErrorMessage()); return; }
+      const result = await signupWithConsents(fields);
+      if (result.error) { setNotice(result.error); return; }
       form.reset();
       setPhone("");
       setPhoneError("");
       setConsents({ ...emptyConsentChoices });
       setVisible(false);
       setComplete(true);
-      if (data.session) {
-        const saved = await finishSignupPhone().catch(() => false);
+      if (result.redirectTo) {
         // Reload the server layout after cookies change; do not reuse prefetched auth state.
-        window.location.assign(saved ? "/auth/confirmed" : "/auth/confirmed?phone=missing");
+        window.location.assign(result.redirectTo);
         return;
       }
       // Existing accounts may receive an obfuscated success response. Do not
@@ -130,9 +122,9 @@ export default function MemberForm({ mode, next }: { mode: Mode; next?: string }
             <Link href={item.document.path} target="_blank" rel="noopener noreferrer" aria-label={`${item.label} 내용 보기 (새 탭)`} className="shrink-0 text-xs leading-6 text-stone-500 underline underline-offset-4">보기</Link>
           </div>;
         })}</div>
-        <p className="mt-5 text-xs leading-5 text-stone-500">약관 문서는 검토 중입니다. 현재 체크는 가입 화면의 입력 확인에만 사용하며 동의 이력과 마케팅 수신 동의는 저장하지 않습니다. 선택 항목에 동의하지 않아도 가입할 수 있습니다.</p>
+        <p className="mt-5 text-xs leading-5 text-stone-500">{consentVersions ? "동의한 문서 버전과 선택 항목의 동의 여부는 이메일 인증 후 기록됩니다. 선택 항목에 동의하지 않아도 가입할 수 있습니다." : "약관 문서를 준비 중입니다. 문서 확정 전에는 회원가입을 진행할 수 없습니다."}</p>
       </div>}
-      <button type="submit" disabled={pending || complete} className="w-full bg-stone-900 px-5 py-4 text-sm text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60">{pending ? (signup ? "가입 요청 중…" : "로그인 중…") : complete ? (signup ? "가입 요청 완료" : "이동 중…") : reset ? "재설정 메일 받기" : signup ? "회원가입" : "로그인"}</button>
+      <button type="submit" disabled={pending || complete || (signup && !consentVersions)} className="w-full bg-stone-900 px-5 py-4 text-sm text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60">{pending ? (signup ? "가입 요청 중…" : "로그인 중…") : complete ? (signup ? "가입 요청 완료" : "이동 중…") : reset ? "재설정 메일 받기" : signup ? "회원가입" : "로그인"}</button>
       </fieldset>
     </form>
 
