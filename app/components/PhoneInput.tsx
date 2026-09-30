@@ -15,7 +15,7 @@ export default function PhoneInput({ id, value, error, onChange, required = fals
     requestAnimationFrame(() => { if (document.activeElement === input) input.setSelectionRange(position, position); });
   }
   return <div>
-    <label htmlFor={id} className="block text-sm">휴대전화{required ? " (필수)" : ""}</label>
+    <label htmlFor={id} className="block text-sm">휴대전화번호{required ? " (필수)" : " (선택)"}</label>
     <input id={id} name="phone" type="tel" inputMode="numeric" autoComplete="tel-national" required={required} value={value} onChange={(event) => change(event.currentTarget, event.target.value, event.target.selectionStart ?? event.target.value.length)} onKeyDown={(event) => {
       const input = event.currentTarget;
       const cursor = input.selectionStart;

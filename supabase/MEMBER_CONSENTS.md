@@ -45,6 +45,14 @@
 
 ## DB 변경과 이력 보존
 
+2026-09-30: 가입 전화번호는 선택이며 빈 값일 때 전화 쿠키를 제거하고 인증 후 전화 저장을 건너뜁니다. 전화 유무와 `marketing_sms` 선택은 서로 독립적입니다. 이름은 가입 필수로 Auth metadata에 전달하여 인증 후 빈 프로필 이름에만 반영합니다. 동의 쿠키·RPC·migration은 변경하지 않았습니다.
+
+### 후속 마케팅 설정 설계 (이번에는 미구현)
+
+`signup_record=true` 행은 가입 당시 증빙입니다. UPDATE/DELETE하지 않고 그대로 보존합니다. 현재 발송 여부는 가입 이력과 구분해야 합니다. 최소안은 기존 `member_consents`에 `signup_record=false`인 채널별 철회/재동의 이벤트를 서버 검증 RPC로 추가하고 서버 기록 시각·안정적인 순서 기준으로 최신 상태를 조회하는 방식입니다. 새 RPC/권한 검토가 필요하고 가입용 RPC를 재사용해서 임의 철회 이력을 만들면 안 됩니다.
+
+조회량이 늘면 `marketing_preferences`(user_id, channel, granted, changed_at, source_event_id) 같은 현재 상태 테이블을 이벤트 추가와 같은 트랜잭션에서 갱신하는 방안을 검토합니다. 가입 시 초기화/중복 요청/동시 변경/철회 우선 처리 기준도 함께 설계합니다. 발송 시 현재 true 상태와 유효한 회원 연락처를 각각 확인하고, 배송 수령인 번호는 사용하지 않습니다. 연락처 입력·수정만으로 동의를 true로 바꾸지 않습니다. 설정 UI·발송·신규 테이블·migration은 이번 범위에 포함하지 않습니다. 증빙 보유/탈퇴 정책은 LEGAL_RELEASE_REVIEW.md에서 별도로 확정합니다.
+
 - `member_consents`에 `signup_record boolean default false`, `agreed_at timestamptz` 추가. 기존 행은 false/null로 유지하며 삭제·중복 정리·과거 시각 추정은 하지 않습니다.
 - `recorded_at`은 기존 DB 저장 시각을 유지하고, `agreed_at`은 서버가 가입 제출을 접수한 시각입니다. 실제 체크박스를 누른 시각으로 주장하지 않습니다.
 - 가입 행에만 `(user_id, consent_type, document_version)` partial unique index 적용. 재시도는 ON CONFLICT DO NOTHING이며 과거 granted/시각을 덮어쓰지 않습니다. 기존 행과 선택값이 충돌하면 전체 요청이 실패하고 사용자에게 재시도 안내가 표시됩니다.

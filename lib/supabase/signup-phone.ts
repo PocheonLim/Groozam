@@ -28,7 +28,8 @@ function openSignupPhone(value: string) {
 }
 
 export async function saveSignupPhone(supabase: SupabaseClient, cookie: string | undefined): Promise<boolean> {
-  if (!cookie) return false;
+  // No optional phone was supplied (or its cookie is unavailable): nothing to save.
+  if (!cookie) return true;
   const pending = openSignupPhone(cookie);
   if (!pending) return false;
   try {

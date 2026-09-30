@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { saveSignupPhone, signupPhoneCookie } from "@/lib/supabase/signup-phone";
+import { saveSignupName } from "@/lib/supabase/signup-name";
 import { saveSignupConsents, signupConsentCookie } from "@/lib/supabase/signup-consents";
 
 export async function GET(request: NextRequest) {
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
     );
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error && data.session) {
+      await saveSignupName(supabase);
       const saved = await saveSignupPhone(supabase, request.cookies.get(signupPhoneCookie)?.value);
       response.cookies.delete(signupPhoneCookie);
       const consents = await saveSignupConsents(supabase, request.cookies.get(signupConsentCookie)?.value);

@@ -43,8 +43,9 @@ export default function MemberForm({ mode, next }: { mode: Mode; next?: string }
       : validateLogin(email, password);
     if (validation) { setNotice(validation); return; }
     if (signup) {
-      const checked = validateProfile("", phone);
-      if (phoneError || !checked.values?.phone) { setNotice(phoneError || checked.error || "휴대전화 번호 11자리를 입력해 주세요."); return; }
+      const checked = validateProfile(String(fields.get("display_name") ?? ""), phone);
+      if (phoneError || checked.error) { setNotice(phoneError || checked.error || "입력 내용을 확인해 주세요."); return; }
+      if (!checked.values?.display_name) { setNotice("이름을 입력해 주세요."); return; }
     }
     submitting.current = true;
     setPending(true);
@@ -112,7 +113,8 @@ export default function MemberForm({ mode, next }: { mode: Mode; next?: string }
         </div>
         {signup && <label className="block text-sm" htmlFor="member-confirm">비밀번호 확인<input id="member-confirm" name="passwordConfirm" type={visible ? "text" : "password"} autoComplete="new-password" required minLength={8} maxLength={128} className={inputClass} placeholder="비밀번호를 한 번 더 입력해 주세요" /></label>}
       </>}
-      {signup && <PhoneInput id="signup-phone" required value={phone} error={phoneError} onChange={(value, error) => { setPhone(value); setPhoneError(error); setNotice(""); }} />}
+      {signup && <label className="block text-sm" htmlFor="signup-name">이름 (필수)<input id="signup-name" name="display_name" autoComplete="name" required maxLength={50} className={inputClass} /></label>}
+      {signup && <PhoneInput id="signup-phone" value={phone} error={phoneError} onChange={(value, error) => { setPhone(value); setPhoneError(error); setNotice(""); }} />}
       {signup && <div className="border-y border-stone-200 py-5 text-sm">
         <label className="mb-5 flex items-start gap-3 border-b border-stone-200 pb-5 font-medium"><input type="checkbox" checked={allConsented} ref={(element) => { if (element) element.indeterminate = !allConsented && consentTypes.some((type) => consents[type]); }} onChange={(event) => { const checked = event.target.checked; setConsents({ terms: checked, privacy: checked, marketing_email: checked, marketing_sms: checked }); setNotice(""); }} className="mt-1 size-4 accent-stone-900" /><span>전체 동의 <span className="font-normal text-stone-500">(선택 항목 포함)</span></span></label>
         <div className="space-y-4">{consentTypes.map((type) => {

@@ -35,7 +35,7 @@ export default async function ConfirmedPage({ searchParams }: { searchParams: Pr
     <p className="mt-6 text-sm leading-6 text-stone-600">{user ? "현재 로그인되어 있습니다. 그루잠에 오신 것을 환영합니다." : "현재 로그인 상태를 확인할 수 없습니다. 이메일 인증을 마쳤다면 로그인 후 서비스를 이용해 주세요."}</p>
     {user && phone === "missing" && <p role="status" className="mt-5 text-sm leading-6 text-stone-600">휴대전화 자동 저장을 확인하지 못했습니다. 마이페이지의 회원정보에서 번호를 확인하거나 입력해 주세요.</p>}
     {user && incompleteConsents && <ConsentRecovery canRetry={canRetryConsents} />}
-    {incompleteProfile && <div className="mt-6 border border-stone-200 p-5"><p className="text-sm leading-6 text-stone-600">이름과 휴대전화를 미리 등록해 두세요. 회원정보는 나중에 입력하셔도 됩니다.</p><Link href="/mypage?section=profile" className="mt-4 inline-block text-sm underline underline-offset-4">회원정보 입력</Link></div>}
+    {incompleteProfile && <div className="mt-6 border border-stone-200 p-5"><p className="text-sm leading-6 text-stone-600">회원정보를 확인하거나 수정할 수 있습니다. 휴대전화번호는 선택사항이며 나중에 등록해도 됩니다.</p><Link href="/mypage?section=profile" className="mt-4 inline-block text-sm underline underline-offset-4">회원정보 입력</Link></div>}
     <Link href={user ? "/" : "/login"} className="mt-8 block bg-stone-900 px-5 py-4 text-sm text-white hover:bg-stone-700">{user ? "쇼핑 계속하기" : "로그인하기"}</Link>
     {user && <Link href="/mypage" className="mt-4 block py-3 text-sm underline underline-offset-4">마이페이지</Link>}
   </main>;

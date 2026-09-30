@@ -75,18 +75,20 @@ test("DB failure stays recoverable with same cookie and no phone dependency", ()
 
 function signupHarness(active) {
   let calls = 0;
+  let signupRequest;
   const store = new Map();
-  const client = { auth: { signUp: async () => { calls++; return { data: { user: { id: userId, identities: [{}] }, session: null }, error: null }; } } };
+  const client = { auth: { signUp: async (request) => { calls++; signupRequest = request; return { data: { user: { id: userId, identities: [{}] }, session: null }, error: null }; } } };
   const actions = load("app/signup/actions.ts", {
     "next/headers": { cookies: async () => ({ get: name => store.has(name) ? { value: store.get(name) } : undefined, set: (name, value) => store.set(name, value), delete: name => store.delete(name) }), headers: async () => new Headers({ origin: "http://localhost:3000" }) },
     "@/lib/supabase/server": { createClient: async () => client }, "@/lib/supabase/profile": profile,
     "@/lib/supabase/signup-phone": phone, "@/lib/supabase/signup-consents": consent,
+    "@/lib/supabase/signup-name": { saveSignupName: async () => {} },
     "@/lib/supabase/consents": { ...consents, getActiveConsentVersions: () => active ? versions : null }, "@/lib/supabase/signup": signup,
   });
   const form = new FormData();
-  for (const [key, value] of Object.entries({ email, password: "fixture-password", passwordConfirm: "fixture-password", phone: "010-1234-5678" })) form.set(key, value);
+  for (const [key, value] of Object.entries({ email, display_name: "테스트 회원", password: "fixture-password", passwordConfirm: "fixture-password", phone: "010-1234-5678" })) form.set(key, value);
   for (const type of consents.consentTypes) { form.set(type, type === "terms" || type === "privacy" ? "true" : "false"); form.set(`version_${type}`, versions[type]); }
-  return { actions, form, store, calls: () => calls };
+  return { actions, form, store, client, calls: () => calls, request: () => signupRequest };
 }
 
 test("server blocks missing required consent, drafts, stale versions before signUp", () => withKeys(async () => {
@@ -135,6 +137,7 @@ test("callback preserves successful auth and phone handling when consent storage
     "next/server": { NextResponse: { redirect: () => response } },
     "@supabase/ssr": { createServerClient: (_url, _key, options) => ({ auth: { exchangeCodeForSession: async () => { options.cookies.setAll([{ name: "session-fixture", value: "fixture", options: {} }], {}); return { data: { session: {} }, error: null }; } } }) },
     "@/lib/supabase/signup-phone": { signupPhoneCookie: phone.signupPhoneCookie, saveSignupPhone: async () => { phoneCalls++; return true; } },
+    "@/lib/supabase/signup-name": { saveSignupName: async () => {} },
     "@/lib/supabase/signup-consents": { signupConsentCookie: consent.signupConsentCookie, saveSignupConsents: async () => { consentCalls++; return consentResult; } },
   });
   const request = { url: "https://example.invalid/auth/callback?code=fixture&next=https://external.invalid", nextUrl: new URL("https://example.invalid/auth/callback?code=fixture"), cookies: { getAll: () => [], get: () => ({ value: "fixture" }) } };
@@ -143,4 +146,120 @@ test("callback preserves successful auth and phone handling when consent storage
   assert.equal(phoneCalls, 1); assert.equal(consentCalls, 1);
   assert.ok(saved.includes("session-fixture")); assert.ok(deleted.includes(phone.signupPhoneCookie)); assert.ok(!deleted.includes(consent.signupConsentCookie));
   consentResult = "saved"; await callback.GET(request); assert.ok(deleted.includes(consent.signupConsentCookie));
+});
+
+test("optional phone clears stale cookies and remains independent of SMS choices", () => withKeys(async () => {
+  for (const sms of ["true", "false"]) {
+    for (const omitted of [true, false]) {
+      const h = signupHarness(true);
+      h.store.set(phone.signupPhoneCookie, phone.sealSignupPhone(email, "01099998888"));
+      if (omitted) h.form.delete("phone"); else h.form.set("phone", "");
+      h.form.set("marketing_sms", sms);
+      assert.deepEqual(await h.actions.signupWithConsents(h.form), {});
+      assert.equal(h.store.has(phone.signupPhoneCookie), false);
+      assert.equal(h.calls(), 1);
+      assert.equal(consent.openSignupConsents(h.store.get(consent.signupConsentCookie)).choices.marketing_sms, sms === "true");
+      assert.deepEqual(h.request().options.data, { display_name: "테스트 회원" });
+    }
+  }
+  assert.equal(await phone.saveSignupPhone({}, undefined), true); // no auth/DB access
+}));
+
+test("partial and invalid phone and missing name never reach Auth", () => withKeys(async () => {
+  for (const value of ["010", "0101234567", "01112345678", "010123456789", "abc", "-"]) {
+    const h = signupHarness(true); h.form.set("phone", value);
+    assert.ok((await h.actions.signupWithConsents(h.form)).error); assert.equal(h.calls(), 0);
+  }
+  for (const value of ["", "   ", "x".repeat(51), "first\nlast"]) {
+    const h = signupHarness(true); h.form.set("display_name", value);
+    assert.ok((await h.actions.signupWithConsents(h.form)).error); assert.equal(h.calls(), 0);
+  }
+  assert.deepEqual(profile.formatPhoneInput("01012345678"), { value: "010-1234-5678", error: "" });
+  assert.equal(profile.validateProfile("회원", "").values.phone, null);
+}));
+
+test("callback without phone succeeds and records consents; bad cookie only shows phone notice", async () => {
+  for (const cookie of [undefined, "invalid-cookie"]) {
+    const response = { headers: new Headers(), cookies: { delete() {}, set() {} } };
+    let consentCalls = 0;
+    const callback = load("app/auth/callback/route.ts", {
+      "next/server": { NextResponse: { redirect: () => response } },
+      "@supabase/ssr": { createServerClient: () => ({ auth: { exchangeCodeForSession: async () => ({ data: { session: {} }, error: null }) } }) },
+      "@/lib/supabase/signup-phone": phone,
+      "@/lib/supabase/signup-name": { saveSignupName: async () => {} },
+      "@/lib/supabase/signup-consents": { signupConsentCookie: consent.signupConsentCookie, saveSignupConsents: async () => { consentCalls++; return "saved"; } },
+    });
+    await callback.GET({ url: "https://example.invalid/auth/callback?code=fixture", nextUrl: new URL("https://example.invalid/auth/callback?code=fixture"), cookies: { getAll: () => [], get: () => cookie ? { value: cookie } : undefined } });
+    assert.equal(response.headers.get("Location"), `https://example.invalid/auth/confirmed${cookie ? "?phone=missing" : ""}`);
+    assert.equal(consentCalls, 1);
+  }
+});
+
+test("phone cookie rejects other accounts and never overwrites an existing phone", () => withKeys(async () => {
+  let updates = 0;
+  const sealed = phone.sealSignupPhone(email, "01012345678");
+  const client = { auth: { getUser: async () => ({ data: { user: { id: userId, email: "other@example.invalid", email_confirmed_at: "confirmed" } } }) }, from: () => ({
+    update: () => { updates++; return { eq: () => ({ is: (_key, value) => { assert.equal(value, null); return { select: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }; } }) }; },
+    select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { phone: "01099998888" }, error: null }) }) }),
+  }) };
+  assert.equal(await phone.saveSignupPhone(client, sealed), false); assert.equal(updates, 0);
+  client.auth.getUser = async () => ({ data: { user: { id: userId, email, email_confirmed_at: "confirmed" } } });
+  assert.equal(await phone.saveSignupPhone(client, sealed), true); assert.equal(updates, 1);
+}));
+
+test("verified signup name fills only an empty profile and failure is nonfatal", async () => {
+  const names = load("lib/supabase/signup-name.ts", { "server-only": {}, "./profile": profile });
+  let updates = 0;
+  const client = { auth: { getUser: async () => ({ data: { user: { id: userId, email_confirmed_at: "confirmed", user_metadata: { display_name: " 회원 " } } } }) }, from: () => ({ update: values => {
+    updates++; assert.deepEqual(values, { display_name: "회원" });
+    return { eq: (column, id) => { assert.equal(column, "id"); assert.equal(id, userId); return { is: async (column, value) => { assert.equal(column, "display_name"); assert.equal(value, null); return { error: null }; } }; } };
+  } }) };
+  await names.saveSignupName(client); assert.equal(updates, 1);
+  client.auth.getUser = async () => ({ data: { user: null } });
+  await names.saveSignupName(client); assert.equal(updates, 1);
+  client.auth.getUser = async () => { throw new Error("unavailable"); };
+  await assert.doesNotReject(names.saveSignupName(client));
+});
+
+test("immediate-session signup without phone completes without a missing-phone warning", () => withKeys(async () => {
+  const h = signupHarness(true); h.form.set("phone", "");
+  h.client.auth.signUp = async () => ({ data: { user: { id: userId, identities: [{}] }, session: {} }, error: null });
+  h.client.auth.getUser = async () => ({ data: { user: { id: userId, email, email_confirmed_at: "confirmed" } } });
+  h.client.rpc = async () => ({ error: null });
+  assert.deepEqual(await h.actions.signupWithConsents(h.form), { redirectTo: "/auth/confirmed" });
+  assert.equal(h.store.has(phone.signupPhoneCookie), false);
+  assert.equal(h.store.has(consent.signupConsentCookie), false);
+}));
+
+test("profile action adds, edits and clears phone for the authenticated owner only", async () => {
+  let user = { id: userId }, stored, owner;
+  const actions = load("app/mypage/actions.ts", {
+    "next/cache": { revalidatePath() {} },
+    "@/lib/supabase/user": { getCurrentUser: async () => user },
+    "@/lib/supabase/profile": profile,
+    "@/lib/supabase/server": { createClient: async () => ({ from: () => ({ update: values => {
+      stored = values; return { eq: (_column, id) => { owner = id; return { select: () => ({ maybeSingle: async () => ({ data: { id }, error: null }) }) }; } };
+    } }) }) },
+  });
+  const form = new FormData(); form.set("display_name", "회원"); form.set("id", "other-user");
+  for (const value of ["01012345678", "010-9999-8888", ""]) {
+    form.set("phone", value);
+    assert.equal((await actions.updateProfile(form)).success, true);
+    assert.equal(owner, userId); assert.equal(stored.phone, value.replaceAll("-", "") || null);
+  }
+  user = null; assert.equal((await actions.updateProfile(form)).success, false);
+});
+
+test("login, profile and address validation retain their existing rules", () => {
+  const login = load("lib/supabase/login.ts");
+  const addresses = load("lib/supabase/addresses.ts", { "./profile": profile });
+  assert.equal(login.validateLogin(email, "password"), null);
+  assert.ok(login.validateLogin(email, ""));
+  assert.equal(login.safeNext("https://outside.invalid"), "/mypage");
+  assert.equal(login.safeNext("/mypage?section=profile"), "/mypage?section=profile");
+  assert.equal(profile.validateProfile("회원", "010-1234-5678").values.phone, "01012345678");
+  const form = new FormData();
+  for (const [key, value] of Object.entries({ label: "집", recipient_name: "수령인", phone: "01012345678", postal_code: "12345", address_line1: "테스트 주소", address_line2: "", delivery_note: "" })) form.set(key, value);
+  assert.equal(addresses.validateAddress(form).values.recipient_phone, "01012345678");
+  form.set("phone", ""); assert.ok(addresses.validateAddress(form).error);
 });

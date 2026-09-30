@@ -3,6 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { validateProfile } from "@/lib/supabase/profile";
+import { saveSignupName } from "@/lib/supabase/signup-name";
 import { sealSignupPhone, saveSignupPhone, signupPhoneCookie, signupPhoneMaxAge } from "@/lib/supabase/signup-phone";
 import { consentTypes, getActiveConsentVersions, type ConsentChoices } from "@/lib/supabase/consents";
 import { signupErrorMessage, validateSignup } from "@/lib/supabase/signup";
@@ -10,8 +11,11 @@ import { saveSignupConsents, sealSignupConsents, signConsentProof, signupConsent
 
 export async function signupWithConsents(form: FormData): Promise<{ error?: string; redirectTo?: string }> {
   if (!(form instanceof FormData)) return { error: "가입 정보를 확인해 주세요." };
-  const email = form.get("email"), password = form.get("password"), confirmation = form.get("passwordConfirm"), phone = form.get("phone");
+  const email = form.get("email"), password = form.get("password"), confirmation = form.get("passwordConfirm"), phone = form.get("phone") ?? "";
   if (typeof email !== "string" || typeof password !== "string" || typeof confirmation !== "string" || typeof phone !== "string") return { error: "가입 정보를 확인해 주세요." };
+  const profile = validateProfile(form.get("display_name"), phone);
+  if (profile.error) return { error: profile.error };
+  if (!profile.values?.display_name) return { error: "이름을 입력해 주세요." };
   const choices = Object.fromEntries(consentTypes.map(type => [type, form.get(type) === "true"])) as ConsentChoices;
   const validation = validateSignup(email.trim(), password, confirmation, choices);
   if (validation) return { error: validation };
@@ -35,7 +39,7 @@ export async function signupWithConsents(form: FormData): Promise<{ error?: stri
   store.delete(signupConsentCookie);
   const supabase = await createClient();
   try {
-    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: new URL("/auth/callback", origin).toString() } });
+    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { data: { display_name: profile.values.display_name }, emailRedirectTo: new URL("/auth/callback", origin).toString() } });
     if (error || !data.user) {
       store.delete(signupPhoneCookie);
       console.warn("[auth/signup] Request failed", { code: error?.code });
@@ -46,6 +50,7 @@ export async function signupWithConsents(form: FormData): Promise<{ error?: stri
     const sealed = sealSignupConsents({ ...snapshot, userId: data.user.id });
     store.set(signupConsentCookie, sealed, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: signupConsentMaxAge });
     if (data.session) {
+      await saveSignupName(supabase);
       const phoneSaved = await finishSignupPhone().catch(() => false);
       const consentSaved = await saveSignupConsents(supabase, sealed);
       if (consentSaved === "saved") store.delete(signupConsentCookie);
@@ -55,6 +60,7 @@ export async function signupWithConsents(form: FormData): Promise<{ error?: stri
     }
     return {};
   } catch {
+    store.delete(signupPhoneCookie);
     console.warn("[auth/signup] Request unavailable");
     return { error: signupErrorMessage() };
   }
@@ -63,8 +69,10 @@ export async function signupWithConsents(form: FormData): Promise<{ error?: stri
 export async function prepareSignupPhone(email: string, phone: string): Promise<{ error?: string }> {
   if (typeof email !== "string" || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "이메일 주소를 확인해 주세요." };
   const validated = validateProfile("", phone);
-  if (!validated.values?.phone) return { error: validated.error ?? "휴대전화 번호 11자리를 입력해 주세요." };
+  if (validated.error) return { error: validated.error };
   const store = await cookies();
+  store.delete(signupPhoneCookie);
+  if (!validated.values?.phone) return {};
   try {
     store.set(signupPhoneCookie, sealSignupPhone(email, validated.values.phone), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: signupPhoneMaxAge });
     return {};
