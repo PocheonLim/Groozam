@@ -73,7 +73,7 @@ test("DB failure stays recoverable with same cookie and no phone dependency", ()
   assert.equal(await consent.saveSignupConsents(client, sealed), "saved");
 }));
 
-function signupHarness(active) {
+function signupHarness(active = true) {
   let calls = 0;
   let signupRequest;
   const store = new Map();
@@ -83,11 +83,11 @@ function signupHarness(active) {
     "@/lib/supabase/server": { createClient: async () => client }, "@/lib/supabase/profile": profile,
     "@/lib/supabase/signup-phone": phone, "@/lib/supabase/signup-consents": consent,
     "@/lib/supabase/signup-name": { saveSignupName: async () => {} },
-    "@/lib/supabase/consents": { ...consents, getActiveConsentVersions: () => active ? versions : null }, "@/lib/supabase/signup": signup,
+    "@/lib/supabase/consents": active ? consents : { ...consents, getActiveConsentVersions: () => null }, "@/lib/supabase/signup": signup,
   });
   const form = new FormData();
   for (const [key, value] of Object.entries({ email, display_name: "테스트 회원", password: "fixture-password", passwordConfirm: "fixture-password", phone: "010-1234-5678" })) form.set(key, value);
-  for (const type of consents.consentTypes) { form.set(type, type === "terms" || type === "privacy" ? "true" : "false"); form.set(`version_${type}`, versions[type]); }
+  for (const type of consents.consentTypes) { form.set(type, type === "terms" || type === "privacy" ? "true" : "false"); form.set(`version_${type}`, documents.legalDocuments[type].version); }
   return { actions, form, store, client, calls: () => calls, request: () => signupRequest };
 }
 
@@ -97,9 +97,42 @@ test("server blocks missing required consent, drafts, stale versions before sign
     assert.ok((await h.actions.signupWithConsents(h.form)).error); assert.equal(h.calls(), 0);
   }
   const draft = signupHarness(false); assert.ok((await draft.actions.signupWithConsents(draft.form)).error); assert.equal(draft.calls(), 0);
-  assert.equal(consents.getActiveConsentVersions(), null); // real documents remain drafts
+  assert.deepEqual(consents.getActiveConsentVersions(), Object.fromEntries(consents.consentTypes.map(type => [type, "2026-09-30.r1"])));
   const stale = signupHarness(true); stale.form.set("version_terms", "2020-01-01.r1");
   assert.ok((await stale.actions.signupWithConsents(stale.form)).error); assert.equal(stale.calls(), 0);
+}));
+
+test("development v1 records all four released versions and optional combinations without phone", () => withKeys(async () => {
+  for (const type of consents.consentTypes) {
+    const document = documents.legalDocuments[type];
+    assert.equal(document.status, "active");
+    assert.equal(document.effectiveDate, "2026-09-30");
+    assert.equal(consents.consentDocuments[type].required, type === "terms" || type === "privacy");
+  }
+  for (const emailChoice of [false, true]) for (const smsChoice of [false, true]) {
+    const h = signupHarness();
+    h.form.delete("phone");
+    h.form.set("marketing_email", String(emailChoice));
+    h.form.set("marketing_sms", String(smsChoice));
+    assert.deepEqual(await h.actions.signupWithConsents(h.form), {});
+    assert.equal(h.calls(), 1);
+    let saved;
+    const client = {
+      auth: { getUser: async () => ({ data: { user: { id: userId, email, email_confirmed_at: "confirmed" } } }) },
+      rpc: async (name, args) => { assert.equal(name, "groozam_record_signup_consents"); saved = JSON.parse(args.p_payload); assert.equal(args.p_signature, consent.signConsentProof(args.p_payload)); return { error: null }; },
+    };
+    assert.equal(await consent.saveSignupConsents(client, h.store.get(consent.signupConsentCookie)), "saved");
+    assert.deepEqual(saved.choices, { terms: true, privacy: true, marketing_email: emailChoice, marketing_sms: smsChoice });
+    assert.deepEqual(saved.versions, Object.fromEntries(consents.consentTypes.map(type => [type, "2026-09-30.r1"])));
+  }
+  for (const type of consents.consentTypes) {
+    const h = signupHarness(); h.form.set(`version_${type}`, "2026-09-29.r1");
+    assert.ok((await h.actions.signupWithConsents(h.form)).error); assert.equal(h.calls(), 0);
+  }
+  for (const emailValue of ["", "invalid"]) {
+    const h = signupHarness(); h.form.set("email", emailValue);
+    assert.ok((await h.actions.signupWithConsents(h.form)).error); assert.equal(h.calls(), 0);
+  }
 }));
 
 test("required-only signup succeeds and preserves both phone and false optional consents", () => withKeys(async () => {
